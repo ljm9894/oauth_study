@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const router = express.Router();
 require('dotenv').config();
 
@@ -6,7 +7,10 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 const googleRedirectURI = process.env.GOOGLE_REDIRECT_URI
 const googleSignupRedirectURI = process.env.GOOGLE_SIGNUP_REDIRECT_URI
-
+//google 토큰 발급을 위한 url
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+//email, google id 등의 정보를 가져오기 위한 url
+const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 
 router.get('/login', (req, res)=>{
     let url = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -39,9 +43,21 @@ router.get('/signup', (req,res)=>{
     res.redirect(url);
 })
 
-router.get('/signup/redirect', (req,res)=>{
+router.get('/signup/redirect', async(req,res)=>{
     const { code } = req.query;
     console.log(`code : ${code}`);
-    res.send('ok success');
+    const resp = await axios.post(GOOGLE_TOKEN_URL, {
+        code,
+        client_id : googleClientId,
+        client_secret : googleClientSecret,
+        redirect_uri : googleSignupRedirectURI,
+        grant_type : "authorization_code",
+    });
+    const resp2 = await axios.get(GOOGLE_USERINFO_URL,{
+        headers : {
+            Authorization : `Bearer ${resp.data.access_token}`
+        },
+    })
+    res.json(resp2.data);
 })
 module.exports = router;
